@@ -182,33 +182,37 @@ struct OnboardingView: View {
     // MARK: - Footer
 
     private var footer: some View {
-        HStack {
-            if page > 0 {
-                Button("Back") { advance(by: -1) }
-                    .buttonStyle(.borderless)
-            }
-            Spacer()
-            PageDots(current: page, total: totalPages)
-            Spacer()
-            Button {
-                if page < totalPages - 1 {
-                    advance(by: 1)
-                } else {
-                    state.hasCompletedOnboarding = true
-                    onDone()
+        VStack(spacing: 6) {
+            HStack {
+                if page > 0 {
+                    Button("Back") { advance(by: -1) }
+                        .buttonStyle(.borderless)
                 }
-            } label: {
-                Text(primaryLabel)
-                    .font(.system(size: 13, weight: .semibold))
-                    .frame(minWidth: 80)
+                Spacer()
+                PageDots(current: page, total: totalPages)
+                Spacer()
+                Button {
+                    if page < totalPages - 1 {
+                        advance(by: 1)
+                    } else {
+                        state.hasCompletedOnboarding = true
+                        onDone()
+                    }
+                } label: {
+                    Text(primaryLabel)
+                        .font(.system(size: 13, weight: .semibold))
+                        .frame(minWidth: 80)
+                }
+                .controlSize(.large)
+                .buttonStyle(.borderedProminent)
+                .tint(.shutterAccent)
+                .keyboardShortcut(.defaultAction)
             }
-            .controlSize(.large)
-            .buttonStyle(.borderedProminent)
-            .tint(.shutterAccent)
-            .keyboardShortcut(.defaultAction)
+            MadeByRyan()
         }
         .padding(.horizontal, 18)
-        .padding(.vertical, 14)
+        .padding(.top, 10)
+        .padding(.bottom, 8)
     }
 
     private func advance(by delta: Int) {

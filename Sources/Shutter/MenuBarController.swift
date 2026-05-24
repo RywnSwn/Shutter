@@ -146,11 +146,52 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
 
     private func paintIcon(secured: Bool) {
         guard let button = statusItem.button else { return }
-        let symbol = secured ? "lock.fill" : "lock.open.fill"
-        let img = NSImage(systemSymbolName: symbol, accessibilityDescription: secured ? "Secured" : "Not secured")
-        img?.isTemplate = true
-        button.image = img
+        button.image = menuBarTemplateIcon()
+        // Full opacity when Secured, dimmed when off — gives a quick visual read of state.
+        button.alphaValue = secured ? 1.0 : 0.55
         button.toolTip = secured ? "Shutter — Secured" : "Shutter — Not Secured"
+    }
+
+    /// Flat monochrome template icon: a rounded square outline containing 5 horizontal
+    /// bars (the "shutter slats" motif from the app icon). Drawn as a template so macOS
+    /// auto-tints it for light/dark menu bars.
+    private func menuBarTemplateIcon() -> NSImage {
+        let size = NSSize(width: 18, height: 18)
+        let image = NSImage(size: size, flipped: false) { rect in
+            NSColor.black.setFill()
+            NSColor.black.setStroke()
+
+            // Rounded square outline.
+            let outerRect = rect.insetBy(dx: 1.25, dy: 1.25)
+            let outerPath = NSBezierPath(roundedRect: outerRect, xRadius: 3.5, yRadius: 3.5)
+            outerPath.lineWidth = 1.4
+            outerPath.stroke()
+
+            // 5 horizontal slats, evenly distributed inside the box.
+            let slatCount = 5
+            let slatHeight: CGFloat = 1.3
+            let slatInsetX: CGFloat = 4
+            let topY: CGFloat = 4
+            let bottomY: CGFloat = 14
+            let innerHeight = bottomY - topY
+            let totalGap = innerHeight - CGFloat(slatCount) * slatHeight
+            let gap = totalGap / CGFloat(slatCount + 1)
+
+            for i in 0..<slatCount {
+                let y = topY + gap + CGFloat(i) * (slatHeight + gap)
+                let slatRect = NSRect(
+                    x: rect.minX + slatInsetX,
+                    y: y,
+                    width: rect.width - slatInsetX * 2,
+                    height: slatHeight
+                )
+                NSBezierPath(roundedRect: slatRect, xRadius: 0.5, yRadius: 0.5).fill()
+            }
+
+            return true
+        }
+        image.isTemplate = true
+        return image
     }
 }
 
@@ -169,6 +210,10 @@ struct MenuBarPopover: View {
             toggleRow
             Divider()
             footer
+            Divider().opacity(0.4)
+            MadeByRyan()
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 6)
         }
         .frame(width: 300)
         .fixedSize(horizontal: false, vertical: true)

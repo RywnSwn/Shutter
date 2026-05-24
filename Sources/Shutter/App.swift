@@ -22,10 +22,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         state = AppState()
         notifier = Notifier()
+        notifier.isEnabled = state.showsPrivacyNotice
         enforcer = Enforcer(notifier: notifier)
         siteBlocker = WebsiteBlocker(notifier: notifier)
         watcher = Watcher(state: state, enforcer: enforcer, siteBlocker: siteBlocker)
         watcher.start()
+
+        // Keep the live Notifier in sync with the Settings toggle.
+        state.$showsPrivacyNotice
+            .sink { [weak self] enabled in self?.notifier.isEnabled = enabled }
+            .store(in: &cancellables)
 
         menuBar = MenuBarController(state: state) { [weak self] in
             self?.showMainWindow()

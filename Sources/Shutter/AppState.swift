@@ -30,6 +30,7 @@ final class AppState: ObservableObject {
     @Published var blockedSites: [BlockedSite] = []
     @Published var hotkey: Hotkey = .default
     @Published var hasCompletedOnboarding: Bool = false
+    @Published var showsPrivacyNotice: Bool = true
 
     private var cancellables = Set<AnyCancellable>()
     private let store = BlacklistStore()
@@ -40,6 +41,7 @@ final class AppState: ObservableObject {
         self.blockedSites = saved.sites
         self.hotkey = saved.hotkey
         self.hasCompletedOnboarding = saved.onboarded
+        self.showsPrivacyNotice = saved.showsPrivacyNotice
 
         // Mirror state to disk whenever any saved field changes.
         let persist: () -> Void = { [weak self] in
@@ -48,12 +50,14 @@ final class AppState: ObservableObject {
                 apps: self.blockedApps,
                 sites: self.blockedSites,
                 hotkey: self.hotkey,
-                onboarded: self.hasCompletedOnboarding
+                onboarded: self.hasCompletedOnboarding,
+                showsPrivacyNotice: self.showsPrivacyNotice
             )
         }
         $blockedApps.dropFirst().sink { _ in persist() }.store(in: &cancellables)
         $blockedSites.dropFirst().sink { _ in persist() }.store(in: &cancellables)
         $hotkey.dropFirst().sink { _ in persist() }.store(in: &cancellables)
         $hasCompletedOnboarding.dropFirst().sink { _ in persist() }.store(in: &cancellables)
+        $showsPrivacyNotice.dropFirst().sink { _ in persist() }.store(in: &cancellables)
     }
 }

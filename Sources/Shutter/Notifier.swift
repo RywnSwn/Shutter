@@ -6,7 +6,11 @@ import SwiftUI
 final class Notifier {
     private var activeWindows: [NSWindow] = []
 
+    /// When false, `show(appName:)` silently no-ops. Toggled from Settings → Privacy Notice.
+    var isEnabled: Bool = true
+
     func show(appName: String) {
+        guard isEnabled else { return }
         let message = "For privacy reasons, \(appName) will not be opened."
         let size = NSSize(width: 360, height: 90)
 
@@ -54,7 +58,9 @@ final class Notifier {
                 window.animator().alphaValue = 0
             }, completionHandler: {
                 window.orderOut(nil)
-                self?.activeWindows.removeAll { $0 === window }
+                Task { @MainActor in
+                    self?.activeWindows.removeAll { $0 === window }
+                }
             })
         }
     }

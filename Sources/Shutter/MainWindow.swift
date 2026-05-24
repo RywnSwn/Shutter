@@ -94,6 +94,8 @@ struct MainWindow: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
+            MadeByRyan()
+            Spacer()
             Button {
                 NSApp.keyWindow?.close()
             } label: {
@@ -281,6 +283,7 @@ struct SettingsTab: View {
             VStack(alignment: .leading, spacing: 22) {
                 hotkeySection
                 startupSection
+                privacyNoticeSection
                 passwordSection
                 aboutSection
             }
@@ -327,6 +330,22 @@ struct SettingsTab: View {
                 .labelsHidden()
                 .toggleStyle(.switch)
                 .tint(.shutterAccent)
+            }
+        }
+    }
+
+    // MARK: - Privacy Notice
+
+    private var privacyNoticeSection: some View {
+        SettingsSection("Privacy Notice", icon: "bell") {
+            SettingsRow(
+                title: "Show privacy notice",
+                subtitle: "When a blocked app or tab opens, a small message slides in from the top-right. Turn off to block silently — it will look like nothing happened."
+            ) {
+                Toggle("", isOn: $state.showsPrivacyNotice)
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .tint(.shutterAccent)
             }
         }
     }
@@ -458,6 +477,8 @@ struct SettingsTab: View {
                     Text("Built around your privacy. All data stays on your Mac.")
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
+                    MadeByRyan()
+                        .padding(.top, 2)
                 }
                 Spacer(minLength: 0)
             }

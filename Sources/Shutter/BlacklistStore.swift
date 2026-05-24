@@ -7,6 +7,7 @@ struct BlacklistStore {
         var sites: [BlockedSite] = []
         var hotkey: Hotkey = .default
         var onboarded: Bool = false
+        var showsPrivacyNotice: Bool = true
     }
 
     private var fileURL: URL {
@@ -23,8 +24,8 @@ struct BlacklistStore {
         return (try? decoder.decode(Saved.self, from: data)) ?? Saved()
     }
 
-    func save(apps: [BlockedApp], sites: [BlockedSite], hotkey: Hotkey, onboarded: Bool) {
-        let payload = Saved(apps: apps, sites: sites, hotkey: hotkey, onboarded: onboarded)
+    func save(apps: [BlockedApp], sites: [BlockedSite], hotkey: Hotkey, onboarded: Bool, showsPrivacyNotice: Bool) {
+        let payload = Saved(apps: apps, sites: sites, hotkey: hotkey, onboarded: onboarded, showsPrivacyNotice: showsPrivacyNotice)
         guard let data = try? JSONEncoder().encode(payload) else { return }
         try? data.write(to: fileURL, options: .atomic)
     }

@@ -132,6 +132,20 @@ struct SectionHeader: View {
     }
 }
 
+// MARK: - Watermark
+
+/// Subtle "Made by Ryan" credit shown on every window/popover. Intentionally tiny and
+/// muted — meant to read as a signature, not a label.
+struct MadeByRyan: View {
+    var body: some View {
+        Text("Made by Ryan")
+            .font(.system(size: 10, weight: .medium, design: .rounded))
+            .tracking(0.3)
+            .foregroundStyle(.tertiary)
+            .accessibilityLabel("Made by Ryan")
+    }
+}
+
 // MARK: - Header backdrop
 
 /// Subtle accent-tinted wash used at the top of windows. Lighter than HeroBackground —
