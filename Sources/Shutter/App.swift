@@ -43,6 +43,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if !state.hasCompletedOnboarding {
             showOnboarding()
         }
+
+        // Re-show onboarding if the user clicks "Replay" in Settings (which flips the flag).
+        state.$hasCompletedOnboarding
+            .dropFirst()
+            .sink { [weak self] completed in
+                guard !completed, self?.onboardingWindow == nil else { return }
+                self?.showOnboarding()
+            }
+            .store(in: &cancellables)
     }
 
     private func applyHotkey(_ hk: Hotkey) {

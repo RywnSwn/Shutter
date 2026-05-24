@@ -1,13 +1,16 @@
 import AppKit
 import Combine
 
-/// Polls every 1.5s. Kills blacklisted apps and closes blacklisted browser tabs while secured.
+/// Two layers of enforcement while secured:
+///   1. A launch observer kills blacklisted apps the instant they appear (sub-second).
+///   2. A 1.5s poll catches anything the observer missed and sweeps browser tabs.
 @MainActor
 final class Watcher {
     private weak var state: AppState?
     private let enforcer: Enforcer
     private let siteBlocker: WebsiteBlocker
     private var timer: Timer?
+    private var launchObserver: NSObjectProtocol?
 
     init(state: AppState, enforcer: Enforcer, siteBlocker: WebsiteBlocker) {
         self.state = state
@@ -21,13 +24,39 @@ final class Watcher {
         timer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.tick() }
         }
+
+        // Instant-kill: fires the moment any app finishes launching, anywhere on the system.
+        launchObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didLaunchApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            Task { @MainActor in self?.handleLaunch(notification) }
+        }
     }
 
     func stop() {
         timer?.invalidate()
         timer = nil
+        if let observer = launchObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(observer)
+            launchObserver = nil
+        }
     }
 
+    /// Instant path: a single app just launched — kill it if it's on the blacklist.
+    private func handleLaunch(_ notification: Notification) {
+        guard let state, state.isSecured, !state.blockedApps.isEmpty else { return }
+        guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
+              let bid = app.bundleIdentifier,
+              bid != Bundle.main.bundleIdentifier else { return }
+        let blockedIDs = Set(state.blockedApps.map(\.bundleIdentifier))
+        guard blockedIDs.contains(bid) else { return }
+        enforcer.kill(app)
+    }
+
+    /// Fallback poll: catches anything already running when Secure Mode flipped on,
+    /// and handles browser tab sweeping which has no per-event hook.
     private func tick() {
         guard let state, state.isSecured else { return }
         let running = NSWorkspace.shared.runningApplications
