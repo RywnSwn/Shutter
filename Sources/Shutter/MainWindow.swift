@@ -63,7 +63,18 @@ struct MainWindow: View {
                 StatusPill(isSecured: state.isSecured)
             }
             Spacer()
-            Toggle("", isOn: $state.isSecured)
+            Toggle("", isOn: Binding(
+                get: { state.isSecured },
+                set: { newValue in
+                    if newValue {
+                        state.isSecured = true
+                    } else {
+                        BiometricUnlock.authenticate(reason: "Turn Secure Mode off") { ok in
+                            if ok { state.isSecured = false }
+                        }
+                    }
+                }
+            ))
                 .toggleStyle(.switch)
                 .controlSize(.large)
                 .tint(.shutterAccent)
@@ -340,7 +351,7 @@ struct SettingsTab: View {
         SettingsSection("Privacy Notice", icon: "bell") {
             SettingsRow(
                 title: "Show privacy notice",
-                subtitle: "When a blocked app or tab opens, a small message slides in from the top-right. Turn off to block silently — it will look like nothing happened."
+                subtitle: "When a blocked app or tab opens, a small message slides in from the top-right. Turn off to block silently, so it looks like nothing happened."
             ) {
                 Toggle("", isOn: $state.showsPrivacyNotice)
                     .labelsHidden()
@@ -490,8 +501,10 @@ struct SettingsTab: View {
                 subtitle: "Walk through the welcome screens again."
             ) {
                 Button("Replay") {
-                    state.hasCompletedOnboarding = false
                     NSApp.keyWindow?.close()
+                    DispatchQueue.main.async {
+                        state.hasCompletedOnboarding = false
+                    }
                 }
             }
         }

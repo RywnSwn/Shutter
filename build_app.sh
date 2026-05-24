@@ -55,13 +55,11 @@ cp -R "$APP_DIR" "$STAGING_DIR/"
 ln -s /Applications "$STAGING_DIR/Applications"
 
 # Drop the background into a hidden folder so Finder doesn't show it in the window.
-# PNG is 1520x1000 (2x Retina). Stretch to 1520x1080 so window can be a touch
-# taller without leaving a strip of default Finder background at the bottom,
-# then stamp 144dpi so Finder treats it as 760x540 points.
+# PNG is 1520x1000 (2x Retina). Stamp 144dpi so Finder treats it as 760x500 points
+# (no resizing — preserve original pixels so the artwork isn't stretched).
 if [ -f "$BG_SRC" ]; then
     mkdir -p "$STAGING_DIR/.background"
     cp "$BG_SRC" "$STAGING_DIR/.background/background.png"
-    sips -z 1240 1600 "$STAGING_DIR/.background/background.png" >/dev/null
     sips -s dpiHeight 144 -s dpiWidth 144 "$STAGING_DIR/.background/background.png" >/dev/null
 fi
 
@@ -77,7 +75,9 @@ hdiutil detach "$MOUNT_DIR" >/dev/null 2>&1 || true
 hdiutil attach "$TMP_DMG" -readwrite -noverify -noautoopen >/dev/null
 
 if [ -f "$BG_SRC" ]; then
-    # Background image is 1520x1000 (2x Retina) → window content area is 760x500.
+    # Background image is 1520x1000 (2x Retina) → 760x500 points at 144dpi.
+    # Window bounds {left, top, right, bottom}: width 760, height 528 (500 + ~28 titlebar)
+    # so the content area lines up exactly with the background image.
     osascript <<EOF
 tell application "Finder"
     tell disk "$APP_NAME"
@@ -85,13 +85,13 @@ tell application "Finder"
         set current view of container window to icon view
         set toolbar visible of container window to false
         set statusbar visible of container window to false
-        set the bounds of container window to {200, 120, 1000, 720}
+        set the bounds of container window to {200, 120, 960, 648}
         set viewOptions to the icon view options of container window
         set arrangement of viewOptions to not arranged
         set icon size of viewOptions to 128
         set background picture of viewOptions to file ".background:background.png"
-        set position of item "$APP_NAME.app" of container window to {220, 260}
-        set position of item "Applications" of container window to {580, 260}
+        set position of item "$APP_NAME.app" of container window to {190, 250}
+        set position of item "Applications" of container window to {570, 250}
         update without registering applications
         delay 1
         close

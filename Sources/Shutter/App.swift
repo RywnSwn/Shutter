@@ -20,6 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var onboardingWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        installMainMenu()
         state = AppState()
         notifier = Notifier()
         notifier.isEnabled = state.showsPrivacyNotice
@@ -48,6 +49,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         if !state.hasCompletedOnboarding {
             showOnboarding()
+        } else if !Self.wasLaunchedAtLogin {
+            // Double-clicking the app (vs. login-launch in the background) opens Settings.
+            showMainWindow()
         }
 
         // Re-show onboarding if the user clicks "Replay" in Settings (which flips the flag).
@@ -58,6 +62,59 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 self?.showOnboarding()
             }
             .store(in: &cancellables)
+
+        // Second-launch handoff: another Shutter process posts this when the user double-clicks
+        // the app while we're already running. Open Settings on the running instance.
+        DistributedNotificationCenter.default().addObserver(
+            forName: Notification.Name("com.rywn.shutter.showSettings"),
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in self?.showMainWindow() }
+        }
+    }
+
+    /// Triggered when the user clicks the app while it's already running (Finder reopen,
+    /// dock click on regular apps, etc). We're accessory-mode so this is the only "reopen"
+    /// path we get for free. Returns false so AppKit doesn't try its own untitled-window logic.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        showMainWindow()
+        return false
+    }
+
+    /// Heuristic for "did launchd start us at login vs. did the user double-click us?"
+    /// At-login launches arrive with `keyAELaunchedAsLogInItem = true` in the kAEOpenApplication event.
+    private static var wasLaunchedAtLogin: Bool {
+        guard let event = NSAppleEventManager.shared().currentAppleEvent else { return false }
+        let key = AEKeyword(0x6c676974) // 'lgit' = keyAELaunchedAsLogInItem
+        return event.paramDescriptor(forKeyword: key)?.booleanValue == true
+    }
+
+    /// Minimal app menu so standard text-editing shortcuts (Cmd+C/V/X/A/Z) work in text fields.
+    /// Accessory apps don't get a menu bar from AppKit automatically, and without the Edit menu
+    /// installed there's no key-equivalent dispatch — paste into "Add a domain" silently fails.
+    private func installMainMenu() {
+        let mainMenu = NSMenu()
+
+        let appMenuItem = NSMenuItem()
+        let appMenu = NSMenu()
+        appMenu.addItem(withTitle: "Quit Shutter", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        appMenuItem.submenu = appMenu
+        mainMenu.addItem(appMenuItem)
+
+        let editMenuItem = NSMenuItem()
+        let editMenu = NSMenu(title: "Edit")
+        editMenu.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
+        editMenu.addItem(withTitle: "Redo", action: Selector(("redo:")), keyEquivalent: "Z")
+        editMenu.addItem(NSMenuItem.separator())
+        editMenu.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        editMenu.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        editMenu.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        editMenu.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        editMenuItem.submenu = editMenu
+        mainMenu.addItem(editMenuItem)
+
+        NSApp.mainMenu = mainMenu
     }
 
     private func applyHotkey(_ hk: Hotkey) {
@@ -126,6 +183,13 @@ enum ShutterMain {
         let others = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
             .filter { $0.processIdentifier != me }
         if let existing = others.first {
+            // Tell the running instance to surface Settings before we exit.
+            DistributedNotificationCenter.default().postNotificationName(
+                Notification.Name("com.rywn.shutter.showSettings"),
+                object: nil,
+                userInfo: nil,
+                deliverImmediately: true
+            )
             existing.activate(options: [.activateAllWindows])
             return
         }
