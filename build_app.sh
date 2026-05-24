@@ -40,10 +40,31 @@ fi
 echo "==> Ad-hoc signing"
 codesign --force --deep --sign - "$APP_DIR"
 
+# Pull the version from Info.plist so the dmg name matches the build.
+VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" Info.plist 2>/dev/null || echo "dev")
+DMG_PATH="$BUILD_DIR/$APP_NAME-$VERSION.dmg"
+STAGING_DIR="$BUILD_DIR/dmg-staging"
+
+echo "==> Building $DMG_PATH"
+rm -rf "$STAGING_DIR" "$DMG_PATH"
+mkdir -p "$STAGING_DIR"
+cp -R "$APP_DIR" "$STAGING_DIR/"
+# Symlink to /Applications gives the classic drag-to-install affordance.
+ln -s /Applications "$STAGING_DIR/Applications"
+
+hdiutil create \
+    -volname "$APP_NAME" \
+    -srcfolder "$STAGING_DIR" \
+    -ov -format UDZO \
+    "$DMG_PATH" >/dev/null
+
+rm -rf "$STAGING_DIR"
+
 echo ""
-echo "Built: $APP_DIR"
+echo "Built:"
+echo "  App: $APP_DIR"
+echo "  DMG: $DMG_PATH"
 echo ""
-echo "Next steps:"
-echo "  1. Drag $APP_DIR into /Applications"
-echo "  2. Right-click → Open the first time (Gatekeeper will warn since it's not Apple-signed)"
-echo "  3. Open Settings and enable 'Launch at login' if you want auto-start"
+echo "Install:"
+echo "  Open $DMG_PATH and drag Shutter to Applications."
+echo "  First launch: right-click Shutter → Open (Gatekeeper warns since it's not Apple-signed)."

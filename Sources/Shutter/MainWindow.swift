@@ -54,21 +54,20 @@ struct MainWindow: View {
     }
 
     private var header: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: "lock.shield.fill")
-                .font(.system(size: 28))
-                .foregroundStyle(state.isSecured ? Color.green : Color.secondary)
+        HStack(alignment: .center, spacing: 14) {
+            AppIconImage(size: 44)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Shutter")
                     .font(.title2.bold())
                 Text(state.isSecured ? "Secured — blocked apps will close instantly." : "Unsecured — flip the switch to enforce.")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(state.isSecured ? Color.shutterAccent : .secondary)
                     .font(.callout)
             }
             Spacer()
             Toggle("Secure", isOn: $state.isSecured)
                 .toggleStyle(.switch)
                 .controlSize(.large)
+                .tint(.shutterAccent)
         }
         .padding(16)
     }

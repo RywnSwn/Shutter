@@ -66,7 +66,7 @@ final class WebsiteBlocker {
         notifier.show(appName: host)
     }
 
-    private static func runScript(source: String) -> [String] {
+    private nonisolated static func runScript(source: String) -> [String] {
         var error: NSDictionary?
         guard let appleScript = NSAppleScript(source: source) else { return [] }
         let descriptor = appleScript.executeAndReturnError(&error)
@@ -74,7 +74,7 @@ final class WebsiteBlocker {
         return extractStringList(from: descriptor)
     }
 
-    private static func extractStringList(from desc: NSAppleEventDescriptor) -> [String] {
+    private nonisolated static func extractStringList(from desc: NSAppleEventDescriptor) -> [String] {
         guard desc.numberOfItems > 0 else { return [] }
         var out: [String] = []
         for i in 1...desc.numberOfItems {

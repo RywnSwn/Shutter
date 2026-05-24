@@ -30,9 +30,7 @@ struct OnboardingView: View {
     private var welcome: some View {
         VStack(spacing: 20) {
             Spacer()
-            Image(systemName: "lock.shield.fill")
-                .font(.system(size: 72))
-                .foregroundStyle(.tint)
+            AppIconImage(size: 96)
             Text("Welcome to Shutter")
                 .font(.largeTitle.bold())
             Text("Pick the apps you want to keep private.\nWhen Secure mode is on, they'll close instantly if anyone tries to open them.")
@@ -62,7 +60,7 @@ struct OnboardingView: View {
             Spacer()
             Image(systemName: "checkmark.seal.fill")
                 .font(.system(size: 72))
-                .foregroundStyle(.green)
+                .foregroundStyle(Color.shutterAccent)
             Text("You're all set")
                 .font(.largeTitle.bold())
             Text("Shutter lives in your menu bar.\nClick the lock icon to toggle Secure mode anytime.")
