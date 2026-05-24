@@ -16,7 +16,7 @@ Made for the times you hand your laptop to someone who likes clicking around.
 
 ## Install
 
-1. Grab the latest **Shutter-1.0.0.dmg** from the [Releases page](https://github.com/RywnSwn/Shutter/releases).
+1. Grab the latest version from the [Releases page](https://github.com/RywnSwn/Shutter/releases).
 2. Open it and drag **Shutter** into **Applications**.
 3. Open Applications, right-click Shutter, and pick **Open**. Only needed the first time, because the app is not signed by Apple.
 4. The lock icon appears in your menu bar at the top of the screen.
