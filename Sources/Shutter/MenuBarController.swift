@@ -203,11 +203,16 @@ struct MenuBarPopover: View {
     var onQuit: () -> Void
     var onToggleRequested: () -> Void
 
+    @State private var emergencyArmed = false
+    @State private var emergencyResetTask: DispatchWorkItem?
+
     var body: some View {
         VStack(spacing: 0) {
             header
             Divider()
             toggleRow
+            Divider()
+            emergencyRow
             Divider()
             footer
             Divider().opacity(0.4)
@@ -249,16 +254,68 @@ struct MenuBarPopover: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
-            Toggle("", isOn: Binding(
-                get: { state.isSecured },
-                set: { _ in onToggleRequested() }
-            ))
-            .labelsHidden()
-            .toggleStyle(.switch)
-            .controlSize(.large)
-            .tint(.shutterAccent)
+            // Same pattern as the main window header: visual is constant-bound so the
+            // switch position purely follows state.isSecured. An invisible button handles
+            // the tap → auth check → state update. No animated flip-then-revert if the
+            // user cancels biometric.
+            Toggle("", isOn: .constant(state.isSecured))
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .controlSize(.large)
+                .tint(.shutterAccent)
+                .allowsHitTesting(false)
+                .overlay(
+                    Button(action: onToggleRequested) {
+                        Color.clear.contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                )
         }
         .padding(14)
+    }
+
+    /// Panic button: first tap arms (button turns red, "Tap again to confirm"); a second
+    /// tap within 3 seconds quits every regular running app and locks the Mac. The arm state
+    /// auto-clears so an accidental brush doesn't leave it primed.
+    private var emergencyRow: some View {
+        Button {
+            if emergencyArmed {
+                emergencyResetTask?.cancel()
+                emergencyResetTask = nil
+                emergencyArmed = false
+                EmergencyAction.execute()
+            } else {
+                emergencyArmed = true
+                emergencyResetTask?.cancel()
+                let task = DispatchWorkItem { emergencyArmed = false }
+                emergencyResetTask = task
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3, execute: task)
+            }
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: emergencyArmed ? "exclamationmark.triangle.fill" : "bolt.shield.fill")
+                    .font(.system(size: 13, weight: .semibold))
+                Text(emergencyArmed ? "Tap again to confirm" : "Emergency: close apps & lock")
+                    .font(.system(size: 12, weight: .semibold))
+                Spacer(minLength: 0)
+            }
+            .foregroundStyle(Color.red)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 9)
+            .background(
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    .fill(Color.red.opacity(emergencyArmed ? 0.20 : 0.09))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    .stroke(Color.red.opacity(emergencyArmed ? 0.55 : 0.20), lineWidth: 1)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .animation(.easeInOut(duration: 0.15), value: emergencyArmed)
     }
 
     private var footer: some View {
@@ -297,5 +354,25 @@ private struct FooterButton: View {
                 NSCursor.arrow.set()
             }
         }
+    }
+}
+
+/// Panic action wired to the emergency button. Sends a graceful `terminate` to every
+/// regular running app (skips background/system processes and Shutter itself), then
+/// locks the screen via CGSession -suspend. The Mac stays powered on — the user logs
+/// back in to resume.
+@MainActor
+enum EmergencyAction {
+    static func execute() {
+        let me = Bundle.main.bundleIdentifier
+        for app in NSWorkspace.shared.runningApplications {
+            guard app.activationPolicy == .regular,
+                  app.bundleIdentifier != me else { continue }
+            app.terminate()
+        }
+        let lock = Process()
+        lock.launchPath = "/System/Library/CoreServices/Menu Extras/User.menu/Contents/Resources/CGSession"
+        lock.arguments = ["-suspend"]
+        try? lock.run()
     }
 }
