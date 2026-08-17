@@ -8,11 +8,6 @@ Made for the times you hand your laptop to someone who likes clicking around.
 
 ---
 
-[**SCREENSHOT 1: Menu bar icon + main window**
-Show the menu bar lock icon at the top of the screen, and the main Shutter window with the header, app list, and Secure Mode toggle. This gives a first impression of what the app looks like.]
-
----
-
 ## What it does
 
 - Closes any app on your block list the second it opens.
